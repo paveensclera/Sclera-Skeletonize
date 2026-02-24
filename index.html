@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SVG Routing Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    button {
+      margin: 10px;
+      padding: 8px 16px;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #route-btn {
+      background: #28a745;
+      color: #fff;
+    }
+    #route-btn:hover {
+    background: #218838; /* darker green */
+    }
+
+    #clear-btn {
+      background: #9b0606;
+      color: #fff;
+    }
+
+    #clear-btn:hover {
+      background: #b71c1c; /* darker red */
+    }
+
+    #svg-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    /* Sticky control bar */
+    #controls {
+      position: fixed;
+      top: 0;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      z-index: 100;
+    }
+    
+  </style>
+</head>
+<body>
+  <h2>SVG Walkable Routing Demo</h2>
+  <div id="controls">
+    <button id="route-btn">Route</button>
+    <button id="clear-btn">Clear</button>
+  </div>
+  <div id="svg-container"></div>
+
+  <script src="router.js"></script>
+</body>
+</html>
