@@ -12,7 +12,7 @@ let currentRoute = [];
 
 // -------------------- LOAD SVG --------------------
 async function loadSVG() {
-  const res = await fetch("merged.svg");
+  const res = await fetch("big.svg");
   const text = await res.text();
   svgContainer.innerHTML = text;
 

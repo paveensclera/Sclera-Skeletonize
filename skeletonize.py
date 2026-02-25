@@ -46,14 +46,18 @@ def process(fp, out_prefix="result"):
     cv2.floodFill(ff, mask, (0, 0), 2)
 
     walk_filled = (ff == 1)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+    walk_filled.astype(np.uint8), connectivity=8
+    )
 
-    num_labels, labels = cv2.connectedComponents(walk_filled.astype(np.uint8))
+    areas = stats[:, cv2.CC_STAT_AREA]
 
-    if num_labels > 1:
-        max_label = 1 + np.argmax([np.sum(labels == i) for i in range(1, num_labels)])
-        walk_filled = (labels == max_label)
-    else:
-        walk_filled = (labels == 1)
+    # ignore background (label 0)
+    min_area = int(walk_filled.size * 0.001)  # 0.1% of image size
+    valid = np.where(areas >= min_area)[0]
+    valid = valid[valid != 0]
+
+    walk_filled = np.isin(labels, valid)
 
     # ------------------------ 7) Skeleton ------------------------
     skel = skeletonize(walk_filled).astype(np.uint8)
@@ -63,17 +67,20 @@ def process(fp, out_prefix="result"):
     skel_rgb[skel == 1] = (206, 130, 49)
 
     cv2.imwrite(f"{out_prefix}_sk.png", skel_rgb)
-    cv2.imwrite(f"{out_prefix}_bw.png", (walk_filled * 255).astype(np.uint8))
-    cv2.imwrite(f"{out_prefix}_walls.png", (walls_thick.astype(np.uint8) * 255))
+    # cv2.imwrite(f"{out_prefix}_bw.png", (walk_filled * 255).astype(np.uint8))
+    # cv2.imwrite(f"{out_prefix}_walls.png", (walls_thick.astype(np.uint8) * 255))
 
     color = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
     color[skel == 1] = (0, 0, 255)
     cv2.imwrite(f"{out_prefix}_overlay.png", color)
 
+    # print(
+    #     f"[OK] Saved {out_prefix}_bw.png, {out_prefix}_walls.png, "
+    #     f"{out_prefix}_sk.png, {out_prefix}_overlay.png"
+    # )
     print(
-        f"[OK] Saved {out_prefix}_bw.png, {out_prefix}_walls.png, "
-        f"{out_prefix}_sk.png, {out_prefix}_overlay.png"
-    )
+    f"[OK] Saved {out_prefix}_sk.png and {out_prefix}_overlay.png"
+)
 
 # ------------------------ CLI ------------------------
 if __name__ == "__main__":
