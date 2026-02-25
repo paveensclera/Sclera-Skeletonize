@@ -37,7 +37,7 @@ Output → `test_sklin.svg`
 5. **Merge SVGs**
 
 ```bash
-./merge.sh
+./merge.sh test.svg test_sklin.svg merged.svg
 ```
 
 Output → `merged.svg`

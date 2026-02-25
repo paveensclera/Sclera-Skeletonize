@@ -1,11 +1,23 @@
 #!/bin/sh
 
-SVG1=test.svg 
-SVG2=test_sklin.svg 
-OUT=merged.svg 
+# Usage: ./merge.sh input1.svg input2.svg [output.svg]
 
-# 1) Copy from SVG1 until first <path>
+if [ "$#" -lt 2 ]; then
+    echo "Usage: $0 SVG1 SVG2 [OUT]"
+    exit 1
+fi
+
+SVG1="$1"
+SVG2="$2"
+OUT="${3:-merged.svg}"
+
+# 1) Copy from SVG1 until first <path>, insert rect after </metadata>
 awk '
+    /<\/metadata>/ {
+        print
+        print "<rect fill=\"white\" width=\"100%\" height=\"100%\" x=\"0\" y=\"0\"/>"
+        next
+    }
     /<path/ { exit }
     { print }
 ' "$SVG1" > "$OUT"
