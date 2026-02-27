@@ -27,10 +27,19 @@ def process(fp, out_prefix="result"):
     # ------------------------ 3) Gray ------------------------
     gray = cv2.cvtColor(bg, cv2.COLOR_BGR2GRAY)
 
-    # ------------------------ 4) Detect walls ------------------------
-    mean_val = np.mean(gray)
-    thr = int(min(240, max(160, mean_val + 10)))
-    walls = (gray < thr)
+    # ------------------------ 4) Detect walls (Otsu) ------------------------
+    _, bin_img = cv2.threshold(
+        gray,
+        0,
+        255,
+        cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )
+
+    # If walls are dark (usual case)
+    walls = (bin_img == 0)
+
+    # If result looks inverted, swap to:
+    # walls = (bin_img == 255)
 
     # ------------------------ 5) Thicken walls ------------------------
     kernel = np.ones((5, 5), np.uint8)
