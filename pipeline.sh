@@ -56,9 +56,15 @@ run_step() {
   echo "$DURATION"
 }
 
+shopt -s nullglob
 for img in "$INPUT_DIR"/*.png; do
   name=$(basename "$img" .png)
   OUTDIR="$BASE_OUT/$name"
+  if [ -f "$MERGED_DIR/${name}_merged.svg" ]; then
+    echo "Skipping $name (already processed)"
+    echo
+    continue
+  fi
   mkdir -p "$OUTDIR"
 
   echo "===================================="

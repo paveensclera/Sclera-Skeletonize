@@ -15,14 +15,14 @@ def process(fp, out_prefix="result"):
     # ------------------------ 2) Handle alpha ------------------------
     if len(img.shape) == 3 and img.shape[2] == 4:
         b, g, r, a = cv2.split(img)
-        r[a == 0] = 255
-        g[a == 0] = 255
-        b[a == 0] = 255
         bg = cv2.merge([b, g, r])
+        alpha_mask = (a > 0)
     elif len(img.shape) == 3 and img.shape[2] == 3:
         bg = img
+        alpha_mask = np.ones(bg.shape[:2], dtype=bool)
     else:
         bg = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        alpha_mask = np.ones(bg.shape[:2], dtype=bool)
 
     # ------------------------ 3) Gray ------------------------
     gray = cv2.cvtColor(bg, cv2.COLOR_BGR2GRAY)
@@ -41,22 +41,18 @@ def process(fp, out_prefix="result"):
     # If result looks inverted, swap to:
     # walls = (bin_img == 255)
 
+    # Transparent pixels are treated as walls
+    walls = walls | (~alpha_mask)
+
     # ------------------------ 5) Thicken walls ------------------------
     kernel = np.ones((5, 5), np.uint8)
     walls_thick = cv2.dilate(walls.astype(np.uint8), kernel, iterations=2).astype(bool)
 
     # ------------------------ 6) BUILD TRUE WALKABLE REGION ------------------------
-    open_space = (~walls_thick).astype(np.uint8)
+    walk_filled = ~walls_thick
 
-    h, w = open_space.shape
-    ff = open_space.copy()
-    mask = np.zeros((h + 2, w + 2), np.uint8)
-
-    cv2.floodFill(ff, mask, (0, 0), 2)
-
-    walk_filled = (ff == 1)
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
-    walk_filled.astype(np.uint8), connectivity=8
+        walk_filled.astype(np.uint8), connectivity=8
     )
 
     areas = stats[:, cv2.CC_STAT_AREA]
@@ -76,20 +72,14 @@ def process(fp, out_prefix="result"):
     skel_rgb[skel == 1] = (206, 130, 49)
 
     cv2.imwrite(f"{out_prefix}_sk.png", skel_rgb)
-    # cv2.imwrite(f"{out_prefix}_bw.png", (walk_filled * 255).astype(np.uint8))
-    # cv2.imwrite(f"{out_prefix}_walls.png", (walls_thick.astype(np.uint8) * 255))
 
     color = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
     color[skel == 1] = (0, 0, 255)
     cv2.imwrite(f"{out_prefix}_overlay.png", color)
 
-    # print(
-    #     f"[OK] Saved {out_prefix}_bw.png, {out_prefix}_walls.png, "
-    #     f"{out_prefix}_sk.png, {out_prefix}_overlay.png"
-    # )
     print(
-    f"[OK] Saved {out_prefix}_sk.png and {out_prefix}_overlay.png"
-)
+        f"[OK] Saved {out_prefix}_sk.png and {out_prefix}_overlay.png"
+    )
 
 # ------------------------ CLI ------------------------
 if __name__ == "__main__":
