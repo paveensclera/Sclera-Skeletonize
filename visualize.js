@@ -3,29 +3,36 @@
 const svgContainer = document.getElementById("svg-container");
 const routeBtn = document.getElementById("route-btn");
 const clearBtn = document.getElementById("clear-btn");
+const floorSelect = document.getElementById("floor-select");
+const FLOOR_FOLDER = "temp/dim1000/";
 
 let svgElement;
 let graph = {};
 let startNode = null;
 let endNode = null;
-let currentRoute = [];
+let routeStack = [];
 
 // -------------------- LOAD SVG --------------------
-async function loadSVG() {
-  const res = await fetch("big.svg");
-  const text = await res.text();
-  svgContainer.innerHTML = text;
+async function loadSVG(path) {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error("SVG load failed");
 
-  svgElement = svgContainer.querySelector("svg");
-  if (!svgElement) return;
+    const text = await res.text();
+    svgContainer.innerHTML = text;
 
-  svgElement.style.border = "1px solid #ccc";
+    svgElement = svgContainer.querySelector("svg");
+    if (!svgElement) return;
 
-  buildGraph();
-  enableClickSelection();
+    svgElement.style.border = "1px solid #ccc";
+
+    buildGraph();
+    enableClickSelection();
+  } catch (err) {
+    console.error(err);
+  }
 }
 
-loadSVG();
 
 // -------------------- GRAPH BUILD --------------------
 
@@ -77,17 +84,52 @@ function buildGraph() {
 function enableClickSelection() {
   svgElement.addEventListener("click", (e) => {
     const pt = getMouseSVGPoint(e);
-
     const nearest = findNearestNode(pt);
     if (!nearest) return;
 
-    if (!startNode) {
-      startNode = nearest;
-      drawMarker(nearest, "green");
-    } else if (!endNode) {
-      endNode = nearest;
-      drawMarker(nearest, "red");
+    // if both already selected → start new route
+    if (startNode && endNode) {
+      startNode = null;
+      endNode = null;
     }
+
+    if (!startNode) {
+  startNode = nearest;
+  currentStartMarker = drawMarker(nearest, "green");
+} else if (!endNode) {
+  endNode = nearest;
+  currentEndMarker = drawMarker(nearest, "red");
+
+  // ✅ let UI update first
+  setTimeout(() => {
+    const path = dijkstra(startNode, endNode);
+
+    if (!path) {
+      alert("No path found");
+
+      routeStack.push({
+        route: null,
+        startMarker: currentStartMarker,
+        endMarker: currentEndMarker,
+      });
+    } else {
+      const routeEl = drawRoute(path);
+
+      routeStack.push({
+        route: routeEl,
+        startMarker: currentStartMarker,
+        endMarker: currentEndMarker,
+      });
+    }
+
+    // reset
+    startNode = null;
+    endNode = null;
+    currentStartMarker = null;
+    currentEndMarker = null;
+
+  }, 0); // 👈 key trick
+}
   });
 }
 
@@ -148,8 +190,14 @@ function dijkstra(start, end) {
     });
   }
 
+  // ❗ NO PATH CHECK
+  if (dist[end] === Infinity) {
+    return null;
+  }
+
   const path = [];
   let curr = end;
+
   while (curr) {
     path.unshift(curr);
     curr = prev[curr];
@@ -161,7 +209,7 @@ function dijkstra(start, end) {
 // -------------------- ROUTE DRAW --------------------
 
 function drawRoute(path) {
-  if (path.length < 2) return;
+  if (path.length < 2) return null;
 
   const points = path.map((k) => graph[k].point);
 
@@ -176,13 +224,13 @@ function drawRoute(path) {
   );
   polyline.setAttribute("fill", "none");
   polyline.setAttribute("stroke", "orange");
-  polyline.setAttribute("stroke-width", "4");
+  polyline.setAttribute("stroke-width", "50");
   polyline.setAttribute("stroke-linejoin", "round");
   polyline.setAttribute("stroke-linecap", "round");
-  polyline.setAttribute("id", "route-line");
 
   svgElement.appendChild(polyline);
-  currentRoute = path;
+
+  return polyline; // ✅ return element
 }
 
 function drawMarker(nodeKey, color) {
@@ -195,27 +243,95 @@ function drawMarker(nodeKey, color) {
 
   circle.setAttribute("cx", p[0]);
   circle.setAttribute("cy", p[1]);
-  circle.setAttribute("r", 6);
+  circle.setAttribute("r", 50);
   circle.setAttribute("fill", color);
-  circle.setAttribute("class", "marker");
 
   svgElement.appendChild(circle);
+
+  return circle; // ✅ return element
 }
 
 // -------------------- BUTTONS --------------------
+
+let currentStartMarker = null;
+let currentEndMarker = null;
 
 routeBtn.addEventListener("click", () => {
   if (!startNode || !endNode) return;
 
   const path = dijkstra(startNode, endNode);
-  drawRoute(path);
+
+  // ❗ ALWAYS push markers
+  if (!path) {
+    alert("No path found");
+
+    routeStack.push({
+      route: null, // no route
+      startMarker: currentStartMarker,
+      endMarker: currentEndMarker,
+    });
+
+    // reset for next input
+    startNode = null;
+    endNode = null;
+    currentStartMarker = null;
+    currentEndMarker = null;
+
+    return;
+  }
+
+  const routeEl = drawRoute(path);
+
+  routeStack.push({
+    route: routeEl,
+    startMarker: currentStartMarker,
+    endMarker: currentEndMarker,
+  });
+
+  startNode = null;
+  endNode = null;
+  currentStartMarker = null;
+  currentEndMarker = null;
 });
 
 clearBtn.addEventListener("click", () => {
+  if (routeStack.length === 0) return;
+
+  const last = routeStack.pop();
+
+  last.route?.remove();
+  last.startMarker?.remove();
+  last.endMarker?.remove();
+});
+
+// floor fetching
+async function initFloors() {
+  try {
+    const res = await fetch(FLOOR_FOLDER + "floors.json");
+    if (!res.ok) throw new Error("floors.json not found");
+
+    const floors = await res.json();
+
+    floors.forEach((name) => {
+      const opt = document.createElement("option");
+      opt.value = FLOOR_FOLDER + name;
+      opt.textContent = name.includes("_merged")
+  ? name.slice(0, 8) + "..." + name.slice(name.indexOf("_merged") - 4, name.indexOf("_merged"))
+  : name;
+      floorSelect.appendChild(opt);
+    });
+
+    loadSVG(FLOOR_FOLDER + floors[0]);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+floorSelect.addEventListener("change", () => {
   startNode = null;
   endNode = null;
-  currentRoute = [];
-
-  svgElement.querySelectorAll("#route-line").forEach((e) => e.remove());
-  svgElement.querySelectorAll(".marker").forEach((e) => e.remove());
+  routeStack = [];
+  loadSVG(floorSelect.value);
 });
+
+initFloors();

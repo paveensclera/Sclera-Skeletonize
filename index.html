@@ -4,6 +4,20 @@
   <meta charset="UTF-8">
   <title>SVG Routing Demo</title>
   <style>
+
+.header {
+  position: relative;
+  width: 100%;
+}
+
+   h2 {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  margin: 0;
+  padding: 10px 0;
+  background: white;
+}
     body {
       font-family: sans-serif;
       text-align: center;
@@ -55,10 +69,13 @@
   </style>
 </head>
 <body>
+  <div class="header">
   <h2>SVG Walkable Routing Demo</h2>
   <div id="controls">
     <button id="route-btn">Route</button>
     <button id="clear-btn">Clear</button>
+    <select id="floor-select"></select>
+  </div>
   </div>
   <div id="svg-container"></div>
 
