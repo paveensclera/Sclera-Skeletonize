@@ -41,9 +41,11 @@ Processes all PNG files inside `pngs/` and writes results to:
 outputs/<filename>/
 ```
 
-> Windows users → run this from **Git Bash**, not PowerShell or CMD.
+> Windows users → run this from **WSL**, not PowerShell or CMD.
 
 ---
+
+### testing seperate steps
 
 ### SVG Routing Pipeline
 
@@ -101,54 +103,3 @@ Open in Browser →
 Notes:
 
 * Must use HTTP server (not file://) or fetch() will fail.
-
-```
-skele
-├─ autotrace
-│  ├─ autotrace
-│  ├─ Dockerfile
-│  └─ libs
-│     ├─ libautotrace.so.3.0.0
-│     ├─ libbz2.so.1
-│     ├─ libffi.so.8
-│     ├─ libglib-2.0.so.0
-│     ├─ libgobject-2.0.so.0
-│     ├─ libintl.so.8
-│     ├─ libpcre2-8.so.0
-│     ├─ libpng16.so.16
-│     └─ libz.so.1
-├─ index.html
-├─ linearize.py
-├─ merge.sh
-├─ merged.svg
-├─ outputs
-│  ├─ invertedL
-│  │  ├─ invertedL.pbm
-│  │  ├─ invertedL.png
-│  │  ├─ invertedL.svg
-│  │  ├─ invertedL_merged.svg
-│  │  ├─ invertedL_overlay.png
-│  │  ├─ invertedL_sk.png
-│  │  ├─ invertedL_sk.svg
-│  │  └─ invertedL_sklin.svg
-│  └─ test
-│     ├─ test.pbm
-│     ├─ test.png
-│     ├─ test.svg
-│     ├─ test_merged.svg
-│     ├─ test_overlay.png
-│     ├─ test_sk.png
-│     ├─ test_sk.svg
-│     └─ test_sklin.svg
-├─ pipeline.sh
-├─ pngs
-│  ├─ invertedL.png
-│  └─ test.png
-├─ potrace
-│  └─ Dockerfile
-├─ README.md
-├─ requirements.txt
-├─ skeletonize.py
-└─ visualize.js
-
-```
