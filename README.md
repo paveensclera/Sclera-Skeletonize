@@ -1,105 +1,65 @@
-### Build Supporting Docker Images
+# SVG Routing Pipeline
 
-Before running the pipeline, build the required images.
-
-#### Build `autotracer` image
-
-```bash
-cd autotrace
-docker build -t autotracer .
-cd ..
-```
-
-#### Build `potracer` image
-
-```bash
-cd potrace
-docker build -t potracer .
-cd ..
-```
-
-````markdown
-#### Build `potracer` image
-
-```bash
-cd potrace
-docker build -t potracer .
-cd ..
-````
+Converts PNG → routed merged SVG using skeletonization, autotrace, and potrace.
 
 ---
-
-### Run Batch Pipeline
+## Setup
 
 ```bash
-./pipeline.sh pngs/
+docker build -t autopaths_pipeline .
 ```
-
-Processes all PNG files inside `pngs/` and writes results to:
-
-```
-outputs/<filename>/
-```
-
-> Windows users → run this from **WSL**, not PowerShell or CMD.
 
 ---
+## Run
 
-### testing seperate steps
-
-### SVG Routing Pipeline
-
-Converts a raster PNG into a routed, merged SVG skeleton and serves a demo viewer.
-
-1. **PNG → Skeleton PNG**
+**macOS / Linux**
 
 ```bash
-python skeletonize.py pngs/test.png outputs/test/test
+docker run --rm -v $(pwd)/pngs:/data -v $(pwd)/outputs:/output autopaths_pipeline /data
 ```
 
-Output → `test_sk.png`, `test_overlay.png`
+**Windows (PowerShell)**
 
-2. **PNG → Base SVG**
+```powershell
+docker run --rm -v ${PWD}/pngs:/data -v ${PWD}/outputs:/output autopaths_pipeline /data
+```
 
+---
+## Output
+
+```
+outputs/
+  merged/          ← final SVGs
+  <name>/          ← intermediates
+  autopaths_*.log  ← timing + RAM log
+```
+
+## Testing Steps Individually
+
+**1. Skeletonize**
 ```bash
-docker run --rm -v "$(pwd):/work" potracer "magick outputs/test/test.png -threshold 99% outputs/test/test.pbm && potrace outputs/test/test.pbm -s -o outputs/test/test.svg"
+python3 skeletonize.py pngs/test.png outputs/test/test
 ```
 
-Output → `test.svg`
-
-3. **Skeleton PNG → Skeleton SVG**
-
+**2. Autotrace**
 ```bash
-docker run --rm -v "$(pwd)/outputs/test:/app" autotracer /app/test_sk.png -centerline -output-file /app/test_sk.svg
+autotrace outputs/test/test_sk.png -centerline -output-file outputs/test/test_sk.svg
 ```
 
-Output → `test_sk.svg`
-
-4. **Skeleton SVG → Linearized Skeleton SVG**
-
+**3. Linearize**
 ```bash
-python linearize.py outputs/test/test_sk.svg outputs/test/test_sklin.svg
+python3 linearize.py outputs/test/test_sk.svg outputs/test/test_sklin.svg
 ```
 
-Output → `test_sklin.svg`
+**4. Potrace**
+```bash
+magick outputs/test/test.png -threshold 99% outputs/test/test.pbm
+potrace outputs/test/test.pbm -s -o outputs/test/test.svg
+```
 
-5. **Merge SVGs**
-
+**5. Merge**
 ```bash
 ./merge.sh outputs/test/test.svg outputs/test/test_sklin.svg outputs/test/test_merged.svg
 ```
 
-Output → `test_merged.svg`
-
-6. **Run Demo Server**
-
-```bash
-npx serve .
-```
-
-Open in Browser →
-[http://localhost:3000/index.html](http://localhost:3000/index.html)
-
-Notes:
-
-* Must use HTTP server (not file://) or fetch() will fail.
+---
