@@ -3,12 +3,12 @@
 set -e
 
 if [ "$#" -lt 1 ]; then
-  echo "Usage: ./pipeline.sh <png_directory>"
+  echo "Usage: pipeline.sh <png_directory>"
   exit 1
 fi
 
 INPUT_DIR="$1"
-BASE_OUT="test_outputs"
+BASE_OUT="/output"
 mkdir -p "$BASE_OUT"
 
 MERGED_DIR="$BASE_OUT/merged"
@@ -53,7 +53,7 @@ run_step() {
   DURATION=$(awk "BEGIN { printf \"%.1f\", $DURATION_MS/1000 }")
 
   PEAK_KB=$(grep "Maximum resident set size" "$TMP_LOG" | awk '{print $6}')
-  PEAK_MB=$(awk "BEGIN { printf \"%.1f\", $PEAK_KB/1024 }")
+  PEAK_MB=$(awk "BEGIN { printf \"%.1f\", ${PEAK_KB:-0}/1024 }")
 
   rm "$TMP_LOG"
 
@@ -74,16 +74,14 @@ for img in "$INPUT_DIR"/*.png; do
     continue
   fi
 
-  [ -d "$OUTDIR" ] || mkdir "$OUTDIR"
+  mkdir -p "$OUTDIR"
+  cp "$img" "$OUTDIR/$name.png"
 
   echo "===================================="
   echo "Processing: $name"
   echo
 
-  cp "$img" "$OUTDIR/$name.png"
-
-  # IMAGE INFO
-  DIMENSIONS=$(python -c "from PIL import Image; Image.MAX_IMAGE_PIXELS=None;
+  DIMENSIONS=$(python3 -c "from PIL import Image; Image.MAX_IMAGE_PIXELS=None;
 import sys;
 try:
     im=Image.open('$img');
@@ -98,41 +96,35 @@ except:
 
   # STEP 1
   res1=$(run_step "Step 1/4 Skeletonize" \
-    python skeletonize.py "$OUTDIR/$name.png" "$OUTDIR/$name")
+    python3 /app/skeletonize.py "$OUTDIR/$name.png" "$OUTDIR/$name")
   t1=$(echo $res1 | cut -d'|' -f1)
   m1=$(echo $res1 | cut -d'|' -f2)
 
   # STEP 2
-  res2=$(run_step "Step 2/4 Autotrace Skeleton SVG" \
-    env MSYS_NO_PATHCONV=1 docker run --rm \
-    -v "$(pwd)/$OUTDIR:/app" \
-    autotracer \
-    /app/${name}_sk.png -centerline \
-    -output-file /app/${name}_sk.svg)
+  res2=$(run_step "Step 2/4 Autotrace" \
+    autotrace "$OUTDIR/${name}_sk.png" \
+    -centerline \
+    -output-file "$OUTDIR/${name}_sk.svg")
   t2=$(echo $res2 | cut -d'|' -f1)
   m2=$(echo $res2 | cut -d'|' -f2)
 
   # STEP 3
   res3=$(run_step "Step 3/4 Linearize" \
-    python linearize.py \
+    python3 /app/linearize.py \
     "$OUTDIR/${name}_sk.svg" \
     "$OUTDIR/${name}_sklin.svg")
   t3=$(echo $res3 | cut -d'|' -f1)
   m3=$(echo $res3 | cut -d'|' -f2)
 
   # STEP 4
-  res4=$(run_step "Step 4/4 Potrace + Merge" \
-    env MSYS_NO_PATHCONV=1 docker run --rm \
-    -v "$(pwd):/app" \
-    -w /app \
-    potracer \
-    "magick $OUTDIR/$name.png -threshold 99% $OUTDIR/$name.pbm && \
-     potrace $OUTDIR/$name.pbm -s -o $OUTDIR/$name.svg && \
-     ./merge.sh $OUTDIR/$name.svg $OUTDIR/${name}_sklin.svg $MERGED_DIR/${name}_merged.svg")
+  res4=$(run_step "Step 4/4 Potrace + Merge" bash -c "
+    magick $OUTDIR/$name.png -threshold 99% $OUTDIR/$name.pbm && \
+    potrace $OUTDIR/$name.pbm -s -o $OUTDIR/$name.svg && \
+    /app/merge.sh $OUTDIR/$name.svg $OUTDIR/${name}_sklin.svg $MERGED_DIR/${name}_merged.svg
+  ")
   t4=$(echo $res4 | cut -d'|' -f1)
   m4=$(echo $res4 | cut -d'|' -f2)
 
-  # PEAK RAM across steps
   MAP_PEAK=$(printf "%s\n%s\n%s\n%s\n" $m1 $m2 $m3 $m4 | sort -nr | head -1)
 
   MAP_END=$(date +%s%3N)
