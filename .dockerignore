@@ -1,0 +1,9 @@
+pngs/
+outputs/
+*.log
+*.png
+*.svg
+*.pbm
+__pycache__/
+*.pyc
+.git

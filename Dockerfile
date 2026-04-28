@@ -8,11 +8,11 @@ RUN apt-get update && apt-get install -y \
     libpng-dev libjpeg-dev libtiff-dev \
     libmagickcore-dev libpstoedit-dev \
     git ca-certificates \
-    time \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-RUN git clone --depth=1 https://github.com/autotrace/autotrace.git . && \
+RUN git clone https://github.com/autotrace/autotrace.git . && \
+    git checkout 2d0b8cce456681ef5baf13f7264980330d1e443b && \
     ./autogen.sh && \
     ./configure --prefix=/usr/local && \
     make -j$(nproc) && \
