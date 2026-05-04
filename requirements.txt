@@ -3,3 +3,6 @@ numpy
 scikit-image
 svgpathtools
 scipy
+fastapi
+uvicorn[standard]
+runpod

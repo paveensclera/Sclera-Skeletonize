@@ -1,7 +1,6 @@
 venv
-
+.venv
 misc
-
 misc_outputs
-
 temp
+outputs

@@ -50,7 +50,10 @@ RUN /opt/venv/bin/pip install --no-cache-dir \
     scikit-image \
     svgpathtools \
     scipy \
-    pillow
+    pillow \
+    fastapi \
+    "uvicorn[standard]" \
+    runpod
 
 # ---------- app ----------
 WORKDIR /app
@@ -58,7 +61,9 @@ COPY skeletonize.py .
 COPY linearize.py .
 COPY merge.sh .
 COPY pipeline.sh .
+COPY app.py .
+COPY handler.py .
 
-RUN chmod +x merge.sh pipeline.sh
+RUN sed -i 's/\r$//' merge.sh pipeline.sh && chmod +x merge.sh pipeline.sh
 
-ENTRYPOINT ["bash", "/app/pipeline.sh"]
+ENTRYPOINT ["python3", "-u", "/app/handler.py"]
