@@ -1,4 +1,5 @@
 import base64
+import re
 import shutil
 import subprocess
 import uuid
@@ -25,8 +26,16 @@ def handler(job):
     job_dir.mkdir(parents=True)
 
     try:
+        input_svg = job_dir / "input.svg"
         input_png = job_dir / "input.png"
-        input_png.write_bytes(base64.b64decode(image_b64))
+        svg_text  = base64.b64decode(image_b64).decode(errors="replace")
+        input_svg.write_text(svg_text)
+
+        # Extract viewBox from input SVG to carry through to output
+        vb_match = re.search(r'viewBox=["\']([^"\']+)["\']', svg_text)
+        viewbox  = vb_match.group(1) if vb_match else None
+
+        _run(["magick", str(input_svg), str(input_png)])
 
         prefix    = str(job_dir / "input")
         sk_png    = job_dir / "input_sk.png"
@@ -37,7 +46,14 @@ def handler(job):
         _run(["autotrace", str(sk_png), "-centerline", "-output-file", str(sk_svg)])
         _run(["python3", "/app/linearize.py", str(sk_svg), str(sklin_svg)])
 
-        return {"svg": base64.b64encode(sklin_svg.read_bytes()).decode()}
+        output = sklin_svg.read_text()
+        if viewbox:
+            if 'viewBox' in output:
+                output = re.sub(r'viewBox="[^"]*"', f'viewBox="{viewbox}"', output, count=1)
+            else:
+                output = output.replace('<svg', f'<svg viewBox="{viewbox}"', 1)
+
+        return {"svg": base64.b64encode(output.encode()).decode()}
 
     except RuntimeError as exc:
         return {"error": str(exc)}
